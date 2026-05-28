@@ -843,7 +843,7 @@ export default function App() {
         body { background: ${cfg.colorBg}; font-family: '${cfg.fontBody}', sans-serif; font-size: ${cfg.fontSizeBase}px; }
         ::-webkit-scrollbar { width: 3px; height: 3px; }
         ::-webkit-scrollbar-thumb { background: ${cfg.colorBorder}; border-radius: 2px; }
-        .hide-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+        .hide-scroll { scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; overflow-x: auto; }
         .hide-scroll::-webkit-scrollbar { display: none; }
         @keyframes slideUp   { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes slideRight{ from { transform: translateX(100%); } to { transform: translateX(0); } }
@@ -919,22 +919,30 @@ export default function App() {
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar productos..." style={{ width: "100%", padding: "10px 12px 10px 34px", borderRadius: 11, border: "none", background: "rgba(255,255,255,.12)", color: cfg.colorHeaderText, fontSize: 14, outline: "none", fontFamily: "inherit" }} />
             </div>
 
-            <div className="hide-scroll" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
-              {[{ id: "all", name: "Todo", icon: "✦" }, ...categories.filter(c => c.active)].map(cat => (
-                <button key={cat.id} onClick={() => setActiveCat(cat.id)} style={{ flexShrink: 0, padding: "6px 13px", borderRadius: 20, border: `1.5px solid ${activeCat === cat.id ? cfg.colorHeaderText : "rgba(255,255,255,.18)"}`, background: activeCat === cat.id ? cfg.colorHeaderText : "transparent", color: activeCat === cat.id ? cfg.colorPrimary : cfg.colorHeaderText, fontWeight: activeCat === cat.id ? 700 : 500, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", transition: "all .15s", fontFamily: "inherit", opacity: activeCat === cat.id ? 1 : .75 }}>
-                  {cat.icon} {cat.name}
-                </button>
-              ))}
+            <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+              <button onClick={() => { const el = document.getElementById("cat-scroll"); el.scrollBy({ left: -200, behavior: "smooth" }); }} style={{ flexShrink: 0, background: "rgba(255,255,255,.15)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", color: cfg.colorHeaderText, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", marginRight: 6 }}>‹</button>
+              <div id="cat-scroll" className="hide-scroll" style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, flex: 1, WebkitOverflowScrolling: "touch" }}>
+                {[{ id: "all", name: "Todo", icon: "✦" }, ...categories.filter(c => c.active)].map(cat => (
+                  <button key={cat.id} onClick={() => setActiveCat(cat.id)} style={{ flexShrink: 0, padding: "6px 13px", borderRadius: 20, border: `1.5px solid ${activeCat === cat.id ? cfg.colorHeaderText : "rgba(255,255,255,.18)"}`, background: activeCat === cat.id ? cfg.colorHeaderText : "transparent", color: activeCat === cat.id ? cfg.colorPrimary : cfg.colorHeaderText, fontWeight: activeCat === cat.id ? 700 : 500, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", transition: "all .15s", fontFamily: "inherit", opacity: activeCat === cat.id ? 1 : .75 }}>
+                    {cat.icon} {cat.name}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => { const el = document.getElementById("cat-scroll"); el.scrollBy({ left: 200, behavior: "smooth" }); }} style={{ flexShrink: 0, background: "rgba(255,255,255,.15)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", color: cfg.colorHeaderText, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", marginLeft: 6 }}>›</button>
             </div>
           </div>
         </div>
 
         {/* FILTER PILLS */}
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "12px 16px 0" }}>
-          <div className="hide-scroll" style={{ display: "flex", gap: 6, overflowX: "auto" }}>
-            {[{ id: "all", label: "Todos" }, ...tags.filter(t => t.active).map(t => ({ id: t.id, label: t.label }))].map(f => (
-              <button key={f.id} onClick={() => setActiveFilter(f.id)} style={{ flexShrink: 0, padding: "5px 12px", borderRadius: 20, fontSize: 12, border: `1.5px solid ${activeFilter === f.id ? cfg.colorPrimary : cfg.colorBorder}`, background: activeFilter === f.id ? cfg.colorPrimary : cfg.colorCard, color: activeFilter === f.id ? "#fff" : cfg.colorTextMuted, fontWeight: activeFilter === f.id ? 700 : 500, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit", transition: "all .15s" }}>{f.label}</button>
-            ))}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <button onClick={() => { const el = document.getElementById("filter-scroll"); el.scrollBy({ left: -150, behavior: "smooth" }); }} style={{ flexShrink: 0, background: "#fff", border: `1px solid ${cfg.colorBorder}`, borderRadius: "50%", width: 26, height: 26, cursor: "pointer", color: cfg.colorTextMuted, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>‹</button>
+            <div id="filter-scroll" className="hide-scroll" style={{ display: "flex", gap: 6, overflowX: "auto", flex: 1, WebkitOverflowScrolling: "touch" }}>
+              {[{ id: "all", label: "Todos" }, ...tags.filter(t => t.active).map(t => ({ id: t.id, label: t.label }))].map(f => (
+                <button key={f.id} onClick={() => setActiveFilter(f.id)} style={{ flexShrink: 0, padding: "5px 12px", borderRadius: 20, fontSize: 12, border: `1.5px solid ${activeFilter === f.id ? cfg.colorPrimary : cfg.colorBorder}`, background: activeFilter === f.id ? cfg.colorPrimary : cfg.colorCard, color: activeFilter === f.id ? "#fff" : cfg.colorTextMuted, fontWeight: activeFilter === f.id ? 700 : 500, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit", transition: "all .15s" }}>{f.label}</button>
+              ))}
+            </div>
+            <button onClick={() => { const el = document.getElementById("filter-scroll"); el.scrollBy({ left: 150, behavior: "smooth" }); }} style={{ flexShrink: 0, background: "#fff", border: `1px solid ${cfg.colorBorder}`, borderRadius: "50%", width: 26, height: 26, cursor: "pointer", color: cfg.colorTextMuted, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>›</button>
           </div>
         </div>
 
