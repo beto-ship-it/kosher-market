@@ -1,4 +1,12 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SUPABASE CLIENT
+// ─────────────────────────────────────────────────────────────────────────────
+const SUPABASE_URL = "https://stacasmxxplwhkjrzyoh.supabase.co";
+const SUPABASE_KEY = "sb_publishable_A5VmD8Kay2mAv17I93DaeQ_KD-bLnau";
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DEFAULT CONFIG
@@ -780,11 +788,40 @@ function CartDrawer({ items, cfg, onClose, onUpdateQty, onRemove }) {
 // MAIN APP
 // ─────────────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [products,   setProducts]   = useState(() => load("km_products",   DEFAULT_PRODUCTS));
-  const [categories, setCategories] = useState(() => load("km_categories", DEFAULT_CATEGORIES));
-  const [tags,       setTags]       = useState(() => load("km_tags",       DEFAULT_TAGS));
-  const [cfg,        setCfg]        = useState(() => load("km_cfg",        DEFAULT_CONFIG));
-  const [cart,       setCart]       = useState(() => load("km_cart",       []));
+  const [products,   setProducts]   = useState(DEFAULT_PRODUCTS);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [tags,       setTags]       = useState(DEFAULT_TAGS);
+  const [cfg,        setCfg]        = useState(DEFAULT_CONFIG);
+  const [cart,       setCart]       = useState(() => load("km_cart", []));
+  const [dbLoaded,   setDbLoaded]   = useState(false);
+
+  // ── Load from Supabase on mount ──
+  useEffect(() => {
+    async function loadFromDB() {
+      try {
+        // Load config
+        const { data: cfgRows } = await sb.from("store_config").select("*");
+        if (cfgRows && cfgRows.length > 0) {
+          const cfgObj = {};
+          cfgRows.forEach(r => { try { cfgObj[r.key] = JSON.parse(r.value); } catch { cfgObj[r.key] = r.value; } });
+          if (Object.keys(cfgObj).length > 0) setCfg(c => ({ ...c, ...cfgObj }));
+        }
+        // Load categories
+        const { data: cats } = await sb.from("categories").select("*").order("order");
+        if (cats && cats.length > 0) setCategories(cats);
+        // Load tags
+        const { data: tgs } = await sb.from("tags").select("*");
+        if (tgs && tgs.length > 0) setTags(tgs);
+        // Load products
+        const { data: prods } = await sb.from("products").select("*").order("order");
+        if (prods && prods.length > 0) setProducts(prods.map(p => ({ ...p, originalPrice: p.original_price, tags: p.tags || [], variants: p.variants || [] })));
+      } catch (e) {
+        console.warn("Supabase load error, using defaults:", e);
+      }
+      setDbLoaded(true);
+    }
+    loadFromDB();
+  }, []);
 
   const [activeCat,    setActiveCat]    = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
@@ -798,10 +835,49 @@ export default function App() {
 
   useEffect(() => { save("km_cart", cart); }, [cart]);
 
-  const saveProducts   = p  => { setProducts(p);   save("km_products",   p); };
-  const saveCategories = c  => { setCategories(c); save("km_categories", c); };
-  const saveTags       = t  => { setTags(t);       save("km_tags",       t); };
-  const saveCfg        = c  => { setCfg(c);        save("km_cfg",        c); };
+  // ── Save to Supabase ──
+  const saveProducts = async (p) => {
+    setProducts(p);
+    try {
+      await sb.from("products").delete().neq("id", "__never__");
+      const rows = p.map((prod, i) => ({
+        id: String(prod.id), name: prod.name, category: prod.category,
+        price: prod.price, unit: prod.unit || "por unidad",
+        description: prod.description || "", image: prod.image || "",
+        tags: prod.tags || [], variants: prod.variants || [],
+        active: prod.active !== false, order: prod.order ?? i,
+        original_price: prod.originalPrice || null,
+      }));
+      if (rows.length > 0) await sb.from("products").insert(rows);
+    } catch(e) { console.warn("saveProducts error:", e); }
+  };
+
+  const saveCategories = async (c) => {
+    setCategories(c);
+    try {
+      await sb.from("categories").delete().neq("id", "__never__");
+      const rows = c.map((cat, i) => ({ id: cat.id, name: cat.name, icon: cat.icon, active: cat.active !== false, order: cat.order ?? i }));
+      if (rows.length > 0) await sb.from("categories").insert(rows);
+    } catch(e) { console.warn("saveCategories error:", e); }
+  };
+
+  const saveTags = async (t) => {
+    setTags(t);
+    try {
+      await sb.from("tags").delete().neq("id", "__never__");
+      const rows = t.map(tg => ({ id: tg.id, label: tg.label, bg: tg.bg, color: tg.color, active: tg.active !== false }));
+      if (rows.length > 0) await sb.from("tags").insert(rows);
+    } catch(e) { console.warn("saveTags error:", e); }
+  };
+
+  const saveCfg = async (c) => {
+    setCfg(c);
+    try {
+      const rows = Object.entries(c).map(([key, value]) => ({ key, value: JSON.stringify(value) }));
+      await sb.from("store_config").delete().neq("key", "__never__");
+      if (rows.length > 0) await sb.from("store_config").insert(rows);
+    } catch(e) { console.warn("saveCfg error:", e); }
+  };
 
   function addToCart(product, variant, qty) {
     const id = `${product.id}_${variant || "base"}`;
